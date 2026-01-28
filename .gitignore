@@ -1,2 +1,7 @@
 /target
 .env
+src/handlers/conversion_response copy.rs
+k8s-deployment/scripts/backup-database.sh
+k8s-deployment/scripts/create-secrets.sh
+k8s-deployment/scripts/deploy.sh
+k8s-deployment/scripts/migrate-to-postgres.sh

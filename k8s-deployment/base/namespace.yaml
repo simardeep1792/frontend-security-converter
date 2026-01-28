@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-converter
+  labels:
+    name: security-converter
+    app.kubernetes.io/name: security-converter
+    app.kubernetes.io/instance: poc

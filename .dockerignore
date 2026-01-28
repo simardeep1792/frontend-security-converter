@@ -1,0 +1,97 @@
+# Rust build artifacts
+target/
+
+# Development files
+.env
+.env.local
+.env.example
+
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CLAUDE.md
+*.md
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Development dependencies
+node_modules/
+package-lock.json
+package.json
+
+# Kubernetes and deployment
+k8s-deployment/
+kubernetes/
+*.yaml
+*.yml
+
+# Testing
+tests/
+test-results/
+
+# Jupyter notebooks
+*.ipynb
+anaconda_projects/
+
+# Temporary and cache files
+tmp/
+temp/
+cache/
+.cache/
+
+# Build tools (keep build.rs - needed for static file compilation)
+# build.rs
+
+# Development scripts
+scripts/
+*.sh
+
+# Example and template files
+examples/
+templates-dev/
+
+# Database files
+*.db
+*.sqlite
+*.sql
+
+# Archive files
+*.tar.gz
+*.zip
+*.rar
+
+# Python cache (if any Python scripts exist)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local development tools
+diesel.toml
+
+# Backup files
+*~
+*.bak
+*.backup
+
+# Intelligence and analysis files
+intelligence_report.md
+
+# Unused Jupyter files  
+Untitled.ipynb

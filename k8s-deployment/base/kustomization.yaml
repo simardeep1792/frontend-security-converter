@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Unified security-converter namespace
+namespace: security-converter
+
+# All resources for the complete security converter stack
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - ollama.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+
+# Common labels for all resources
+labels:
+  - pairs:
+      app.kubernetes.io/name: security-converter
+      app.kubernetes.io/instance: poc
+      app.kubernetes.io/version: v1.0.0
+
+# Image configurations - preserve existing tags
+images:
+  - name: simardeep1792/security-converter
+    newTag: eec997e-amd64
+  - name: simardeep1792/security-converter-frontend
+    newTag: latest
+
+# Resource scaling configurations
+replicas:
+  - name: security-converter-api
+    count: 2
+  - name: security-converter-frontend
+    count: 2
+  - name: postgres
+    count: 1
+  - name: ollama-gemma
+    count: 1

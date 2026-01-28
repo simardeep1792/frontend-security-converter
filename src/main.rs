@@ -49,7 +49,7 @@ async fn main() -> std::io::Result<()> {
     };
 
     let api_target = if environment == "production" {
-        env::var("GRAPHQL_API_TARGET").unwrap()
+        env::var("GRAPHQL_API_TARGET").unwrap_or_else(|_| "http://security-converter-api.security-converter.svc.cluster.local/graphql".to_string())
     } else {
         String::from("http://127.0.0.1:8080/graphql")
     };
@@ -78,7 +78,9 @@ async fn main() -> std::io::Result<()> {
     let client = Arc::new(Client::new());
     
     // Create Ollama connection for local LLM
-    let ollama = Ollama::default();
+    let ollama_host = env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://ollama-service.security-converter.svc.cluster.local".to_string());
+    let ollama_port = env::var("OLLAMA_PORT").unwrap_or_else(|_| "8000".to_string()).parse::<u16>().unwrap_or(8000);
+    let ollama = Ollama::new(ollama_host, ollama_port);
 
     // Initialize AppData
     let data = web::Data::new(AppData {

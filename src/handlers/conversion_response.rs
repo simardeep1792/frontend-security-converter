@@ -328,13 +328,26 @@ pub async fn submit_document(
 
     let data_obj_format = FormatType::StructuredJson(Box::new(JsonStructure::new::<LLMFields>()));
 
-    // Options: ministral-3:14b, mistral-small, gemma3:1b
-    // qwen3:4b-instruct-2507-q4_K_M
+    // Options: llama3:8b, mistral:7b, gemma2:27b (best accuracy)
+    // Using Llama3 8B for balanced performance
 
-    let model = "qwen3:4b-instruct-2507-q4_K_M".to_owned();
-    let prompt = format!("Take the data from document to populate metadata and data object fields from {:?} using user input content {}", 
-        &data_obj_format,
-        &form.content);
+    let model = "llama3:8b".to_owned();
+    let prompt = format!(
+        "Extract security metadata from this document as valid JSON.\n\n\
+        Document: {}\n\n\
+        Requirements:\n\
+        - title: Clear descriptive title (required string)\n\
+        - description: 2-sentence summary (required string)\n\
+        - domain: One of INTEL, CYBER, OPERATIONS, LOGISTICS, COMMUNICATIONS, NUCLEAR, COUNTERTERRORISM, MARITIME, AEROSPACE, SPECIALOPS\n\
+        - tags: Array of 3-6 classification tags (required array of strings)\n\
+        - identifier: Unique ID in format ORG-DOMAIN-DATE-XXXX (required string)\n\
+        - For optional arrays: use empty array [] if no values, never null\n\
+        - For optional strings: use null if no value\n\n\
+        Schema: {:?}\n\n\
+        Output valid JSON only:", 
+        &form.content,
+        &data_obj_format
+    );
 
     let ollama = &data.llm;
 
@@ -348,7 +361,14 @@ pub async fn submit_document(
                 model, 
                 prompt)
         .format(data_obj_format)
-        .options(ModelOptions::default().temperature(0.0)),
+        .options(
+            ModelOptions::default()
+                .temperature(0.2)
+                .top_k(40)              // Focus on best token choices for structured output
+                .top_p(0.9)             // High quality sampling for JSON
+                .repeat_penalty(1.1)    // Prevent repetitive JSON fields
+                .num_predict(2048)      // Ensure sufficient space for complete JSON
+        ),
         )
         .await
         .expect("Unable to retrieve LLM generated content");

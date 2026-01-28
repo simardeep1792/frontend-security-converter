@@ -1,0 +1,177 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: frontend-secrets
+  namespace: security-converter
+  labels:
+    app: security-converter-frontend
+    component: frontend
+type: Opaque
+data:
+  # 64-byte secret key (base64 encoded - exactly 64 bytes when decoded)  
+  COOKIE_SECRET_KEY: YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjAxMjM0NTY3ODlhYg==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-converter-frontend
+  namespace: security-converter
+  labels:
+    app: security-converter-frontend
+    component: frontend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: security-converter-frontend
+  template:
+    metadata:
+      labels:
+        app: security-converter-frontend
+        component: web-ui
+      annotations:
+        prometheus.io/scrape: "false"  # Add when metrics are implemented
+        prometheus.io/port: "8088"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        # Wait for backend API service to be available
+        - name: wait-for-backend
+          image: curlimages/curl:8.4.0
+          command:
+            - sh
+            - -c
+            - |
+              until nslookup security-converter-api.security-converter.svc.cluster.local; do 
+                echo "Waiting for backend service DNS resolution..."
+                sleep 5
+              done
+              until curl -f http://security-converter-api.security-converter.svc.cluster.local:80/ --connect-timeout 5 --max-time 10; do 
+                echo "Waiting for backend API health check..."
+                sleep 10
+              done
+              echo "Backend API is ready"
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+      containers:
+        - name: frontend
+          image: simardeep1792/security-converter-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8088
+              protocol: TCP
+          env:
+            # Environment configuration
+            - name: ENVIRONMENT
+              value: "production"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8088"
+            # Backend API connection - internal cluster service
+            - name: GRAPHQL_API_TARGET
+              value: "http://security-converter-api.security-converter.svc.cluster.local/graphql"
+            # Ollama LLM service connection
+            - name: OLLAMA_HOST
+              value: "http://ollama-service.security-converter.svc.cluster.local"
+            - name: OLLAMA_PORT
+              value: "8000"
+            # Secrets
+            - name: COOKIE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secrets
+                  key: COOKIE_SECRET_KEY
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /en
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /en
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Resource management
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+              ephemeral-storage: "1Gi"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+              ephemeral-storage: "2Gi"
+          # Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Tera templates may need temp files
+            capabilities:
+              drop:
+                - ALL
+      # Deployment constraints
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - security-converter-frontend
+              topologyKey: kubernetes.io/hostname
+      # Graceful shutdown
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-converter-frontend
+  namespace: security-converter
+  labels:
+    app: security-converter-frontend
+    component: web-ui
+spec:
+  type: NodePort
+  sessionAffinity: ClientIP  # Maintain sessions for stateful auth
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
+  selector:
+    app: security-converter-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8088
+      protocol: TCP

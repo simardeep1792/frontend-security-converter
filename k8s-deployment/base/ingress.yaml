@@ -1,0 +1,131 @@
+---
+# Google-managed certificate for HTTPS
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: security-converter-ssl-cert
+  namespace: security-converter
+  labels:
+    app: security-converter
+spec:
+  domains:
+    - security-converter.obrienlabs.dev
+
+---
+# Unified ingress extending existing backend ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: security-converter-unified-ingress
+  namespace: security-converter
+  labels:
+    app: security-converter
+    component: unified-gateway
+  annotations:
+    # Reuse existing GKE ingress configuration
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "security-converter-global-ip"
+    networking.gke.io/managed-certificates: "security-converter-ssl-cert"
+    # Backend configurations for different services
+    cloud.google.com/backend-config: '{"default": "frontend-backend-config", "security-converter-api": "api-backend-config"}'
+spec:
+  rules:
+  - host: security-converter.obrienlabs.dev
+    http:
+      paths:
+      # Backend API routes - MUST be first and specific
+      - path: /graphql
+        pathType: Exact
+        backend:
+          service:
+            name: security-converter-api
+            port:
+              number: 80
+      - path: /playground
+        pathType: Exact
+        backend:
+          service:
+            name: security-converter-api
+            port:
+              number: 80
+      - path: /api
+        pathType: Prefix  
+        backend:
+          service:
+            name: security-converter-api
+            port:
+              number: 80
+      # Frontend static assets
+      - path: /static
+        pathType: Prefix
+        backend:
+          service:
+            name: security-converter-frontend
+            port:
+              number: 80
+      # Language routes to frontend
+      - path: /en
+        pathType: Prefix
+        backend:
+          service:
+            name: security-converter-frontend
+            port:
+              number: 80
+      - path: /fr  
+        pathType: Prefix
+        backend:
+          service:
+            name: security-converter-frontend
+            port:
+              number: 80
+      # Root path defaults to frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: security-converter-frontend
+            port:
+              number: 80
+
+---
+# Backend configuration for session affinity
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: frontend-backend-config
+  namespace: security-converter
+spec:
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+    affinityCookieTtlSec: 10800  # 3 hours
+  timeoutSec: 300
+  connectionDraining:
+    drainingTimeoutSec: 60
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /en
+    port: 80
+
+---
+# Backend configuration for API service
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: api-backend-config
+  namespace: security-converter
+spec:
+  timeoutSec: 300
+  connectionDraining:
+    drainingTimeoutSec: 60
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /
+    port: 80
