@@ -36,9 +36,13 @@ echo "Extracting source code..."
 cd "$INSTALL_DIR"
 tar -xzf /tmp/frontend-source.tar.gz
 
-# Create .env file if it doesn't exist
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo "Creating .env file..."
+# Check if .env was uploaded to /tmp, otherwise use extracted one
+if [ -f "/tmp/.env" ]; then
+    echo "Using uploaded .env file..."
+    cp /tmp/.env "$INSTALL_DIR/.env"
+    chmod 600 "$INSTALL_DIR/.env"
+elif [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo "Creating default .env file..."
     cat > "$INSTALL_DIR/.env" << 'EOF'
 COOKIE_SECRET_KEY=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ01
 ENVIRONMENT=production

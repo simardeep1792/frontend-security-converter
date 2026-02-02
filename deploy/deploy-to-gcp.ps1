@@ -48,6 +48,24 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# Copy the .env file
+Write-Host "`nCopying .env file to VM..." -ForegroundColor Yellow
+$envFile = Join-Path $LOCAL_DIR ".env"
+if (Test-Path $envFile) {
+    gcloud compute scp $envFile "${VM_NAME}:/tmp/.env" `
+        --project="$PROJECT" `
+        --zone="$ZONE" `
+        --tunnel-through-iap
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARNING: Failed to copy .env file, will use defaults" -ForegroundColor Yellow
+    } else {
+        Write-Host ".env file copied successfully" -ForegroundColor Green
+    }
+} else {
+    Write-Host "WARNING: No .env file found, will use defaults" -ForegroundColor Yellow
+}
+
 # Copy the setup script
 Write-Host "`nCopying setup script to VM..." -ForegroundColor Yellow
 $setupScript = Join-Path $SCRIPT_DIR "setup-on-vm.sh"
