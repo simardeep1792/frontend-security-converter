@@ -59,7 +59,7 @@
                 <h2 class="h3 mb-3">Authorities by Nation</h2>
 
                 {% if authorities %}
-                    {% set nations_map = authorities | group_by(attribute="nation.nationName") %}
+                    {% set nations_map = authorities | group_by(attribute="nation.nation_name") %}
 
                     {# Extract nation names into an array and sort them #}
                     {% set_global nation_names = [] %}
@@ -76,7 +76,7 @@
                                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                             <h3 class="mb-0 h6">{{ nation_name }}</h3>
                                             {% if nation_authorities[0].nation %}
-                                                <span class="badge bg-light text-dark">{{ nation_authorities[0].nation.nationCode }}</span>
+                                                <span class="badge bg-light text-dark">{{ nation_authorities[0].nation.nation_code }}</span>
                                             {% endif %}
                                         </div>
                                         <div class="card-body p-0">

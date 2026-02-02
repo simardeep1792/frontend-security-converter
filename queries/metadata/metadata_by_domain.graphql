@@ -1,37 +1,8 @@
+# Note: metadataByDomain query no longer exists in the new schema
+# Using dataObjectCountsByMetadataDomain to get domain counts
 query MetadataByDomain($domain: String!) {
-  metadataByDomain(domain: $domain) {
-    id
-    identifier
-    securityClassification
+  dataObjectCountsByMetadataDomain(domain: $domain) {
     domain
-    tags
-    format
-    formatSize
-    handlingRestrictions
-    releasableToCountries
-    createdAt
-    dataObject {
-      id
-      title
-      description
-      conversionRequest {
-        id
-        sourceNationClassification
-        sourceNationCode
-        targetNationCodes
-        completedAt
-        conversionResponse {
-          natoEquivalent
-        }
-      }
-    }
-    originatingOrganization {
-      id
-      name
-    }
-    custodianOrganization {
-      id
-      name
-    }
+    count
   }
 }

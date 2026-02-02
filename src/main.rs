@@ -10,10 +10,10 @@ use actix_web::cookie::Key;
 use actix_web_static_files::ResourceFiles;
 use reqwest::Client;
 use std::sync::Arc;
-use ollama_rs::Ollama;
 
 use frontend::handlers;
 use frontend::AppData;
+use frontend::llm::{LlmClient, OllamaProvider, GeminiProvider, LlmProvider};
 
 use fluent_templates::{FluentLoader, static_loader};
 // https://lib.rs/crates/fluent-templates
@@ -76,18 +76,34 @@ async fn main() -> std::io::Result<()> {
     
     // Create Reqwest Client
     let client = Arc::new(Client::new());
-    
-    // Create Ollama connection for local LLM
-    let ollama_host = env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://ollama-service.security-converter.svc.cluster.local".to_string());
-    let ollama_port = env::var("OLLAMA_PORT").unwrap_or_else(|_| "8000".to_string()).parse::<u16>().unwrap_or(8000);
-    let ollama = Ollama::new(ollama_host, ollama_port);
+
+    // Create LLM client based on LLM_PROVIDER environment variable
+    // Options: "ollama" (default), "gemini"
+    let llm_provider = env::var("LLM_PROVIDER").unwrap_or_else(|_| "ollama".to_string());
+
+    let llm: LlmClient = match llm_provider.to_lowercase().as_str() {
+        "gemini" => {
+            println!("Initializing Google Gemini LLM provider...");
+            let provider = GeminiProvider::from_env()
+                .expect("Failed to initialize Gemini provider. Ensure GEMINI_API_KEY is set.");
+            println!("Gemini provider initialized with model: {}", provider.default_model());
+            LlmClient::Gemini(Arc::new(provider))
+        }
+        _ => {
+            println!("Initializing Ollama LLM provider...");
+            let provider = OllamaProvider::from_env()
+                .expect("Failed to initialize Ollama provider");
+            println!("Ollama provider initialized with model: {}", provider.default_model());
+            LlmClient::Ollama(Arc::new(provider))
+        }
+    };
 
     // Initialize AppData
     let data = web::Data::new(AppData {
         tmpl: tera,
         api_url: api_url,
         client: client,
-        llm: ollama,
+        llm: llm,
     });
 
     HttpServer::new(move || {

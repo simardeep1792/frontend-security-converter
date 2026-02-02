@@ -6,7 +6,7 @@ use actix_identity::{Identity};
 
 
 use crate::{AppData, generate_basic_context};
-use crate::graphql::{get_authority_by_id, get_conversion_request_by_id};
+use crate::graphql::{get_authority_by_id, get_conversion_request_by_id, all_authorities};
 
 #[get("/{lang}/conversion_request")]
 pub async fn conversion_request_form(
@@ -21,8 +21,8 @@ pub async fn conversion_request_form(
     let mut ctx = generate_basic_context(id, &lang, req.uri().path(), &session);
 
     let authority_id = match req.get_session().get::<String>("authority_id").unwrap() {
-        Some(s) => s,
-        None => "".to_string(),
+        Some(s) if !s.is_empty() => Some(s),
+        _ => None,
     };
 
     let bearer = match req.get_session().get::<String>("bearer").unwrap() {
@@ -30,11 +30,31 @@ pub async fn conversion_request_form(
         None => "".to_string(),
     };
 
-    let r = get_authority_by_id(authority_id, bearer, &data.api_url, Arc::clone(&data.client))
-        .await
-        .expect("Unable to get authority");
-
-    ctx.insert("authority", &r.authority_by_id);
+    // Only fetch authority if user has one (non-admin users)
+    if let Some(auth_id) = authority_id {
+        match get_authority_by_id(auth_id.clone(), bearer.clone(), &data.api_url, Arc::clone(&data.client)).await {
+            Ok(r) => {
+                ctx.insert("authority", &r.authority_by_id);
+            }
+            Err(e) => {
+                println!("Error fetching authority: {:?}", e);
+                ctx.insert("authority_error", &format!("{}", e));
+            }
+        }
+    } else {
+        // User without pre-assigned authority - let them select one
+        // Fetch all authorities for selection
+        match all_authorities(bearer.clone(), &data.api_url, Arc::clone(&data.client)).await {
+            Ok(authorities) => {
+                ctx.insert("authorities", &authorities);
+                ctx.insert("select_authority", &true);
+            }
+            Err(e) => {
+                println!("Error fetching authorities: {:?}", e);
+                ctx.insert("authority_error", &format!("Failed to load authorities: {}", e));
+            }
+        }
+    }
 
     let rendered = data.tmpl.render("conversion_request/conversion_request.html", &ctx).unwrap();
     HttpResponse::Ok().body(rendered)

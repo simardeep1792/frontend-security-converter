@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}
+    <title>{{ fluent(key="my-profile", lang=lang) }}</title>
+{% endblock title %}
+
+{% block content %}
+    <div class="col m-md-2 m-1">
+        <br>
+        <h1>{{ fluent(key="my-profile", lang=lang) }}</h1>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if user %}
+        <div class="card card-body">
+            <p>{{ fluent(key="user-details", lang=lang) }}</p>
+
+            <p><strong>{{ fluent(key="name", lang=lang) }}:</strong> {{ user.name }}</p>
+
+            <p><strong>{{ fluent(key="email", lang=lang) }}:</strong> {{ user.email }}</p>
+
+            <p><strong>{{ fluent(key="role", lang=lang) }}:</strong> {{ user.role }}</p>
+
+            <p><strong>{{ fluent(key="access-level", lang=lang) }}:</strong> {{ user.accessLevel }}</p>
+
+            <p><strong>{{ fluent(key="member-since", lang=lang) }}:</strong> {{ user.createdAt }}</p>
+
+            <h2>{{ fluent(key="account-options", lang=lang) }}</h2>
+            <p>
+                {% if role == "ADMIN" %}
+                <a class="btn btn-dark" href="/{{ lang }}/admin_edit_user/{{ user.id }}">{{ fluent(key="edit-as-admin", lang=lang) }}</a>
+                {% else %}
+                <a class="btn btn-dark" href="/{{ lang }}/edit_user/{{ user.id }}">{{ fluent(key="change-username-email", lang=lang) }}</a>
+                {% endif %}
+                <a class="btn btn-dark" href="/{{ lang }}/request_password_reset">{{ fluent(key="reset-password", lang=lang) }}</a>
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            {{ fluent(key="profile-not-found", lang=lang) }}
+        </div>
+        {% endif %}
+        <br>
+    </div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+
+</script>
+{% endblock scripts %}

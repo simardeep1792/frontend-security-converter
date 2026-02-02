@@ -3,8 +3,8 @@ use serde::{Serialize, Deserialize};
 use std::error::Error;
 use reqwest::Client;
 use std::sync::Arc;
-use chrono::NaiveDateTime;
 
+type NaiveDateTime = String;
 type UUID = String;
 
 #[derive(GraphQLQuery, Serialize, Deserialize)]

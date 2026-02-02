@@ -94,6 +94,11 @@ send-reset-email = Send Password Reset Email
 ## User Page
 user-profile-for = User profile for:
 user-details = User details and account management.
+my-profile = My Profile
+name = Name
+access-level = Access Level
+member-since = Member Since
+profile-not-found = Profile not found
 account-options = Account Options
 edit-as-admin = Edit User as Admin
 change-username-email = Change username or email address

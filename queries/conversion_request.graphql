@@ -1,17 +1,21 @@
-mutation SubmitConversion($input: ConversionRequestInput!) {
-  submitConversionRequest(conversionData: $input) {
-    request {
+mutation SubmitConversion($input: SubmitConversionRequestInput!) {
+  submitConversionRequest(input: $input) {
+    id
+    sourceNationCode
+    targetNationCodes
+    createdAt
+    dataObject {
       id
-      sourceNationCode
-      targetNationCodes
+      title
+      description
     }
-    response {
-      conversionRequestId
-      subjectDataId
-      natoEquivalent
-      targetNationClassifications
+    authority {
+      id
+      name
+      nation {
+        nationCode
+        nationName
+      }
     }
-    success
-    message
   }
 }

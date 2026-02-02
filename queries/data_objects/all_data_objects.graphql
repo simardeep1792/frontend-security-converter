@@ -1,0 +1,13 @@
+query AllDataObjects {
+  dataObjects {
+    id
+    title
+    description
+    createdAt
+    metadata {
+      id
+      domain
+      tags
+    }
+  }
+}

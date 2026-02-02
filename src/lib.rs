@@ -2,27 +2,25 @@ pub mod models;
 pub mod handlers;
 pub mod graphql;
 pub mod errors;
+pub mod llm;
 
 use tera::{Tera, Context};
 use actix_identity::Identity;
 use actix_session::Session;
 use reqwest::Client;
 use std::sync::Arc;
-use ollama_rs::Ollama;
 
+pub use llm::LlmClient;
 
 extern crate strum;
-#[macro_use]
 extern crate strum_macros;
 
-const APP_NAME: &str = "NCC-frontend";
-
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AppData {
     pub tmpl: Tera,
     pub api_url: String,
     pub client: Arc<Client>,
-    pub llm: Ollama,
+    pub llm: LlmClient,
 }
 
 /// Generate context, session_user, role and node_names from id and lang
@@ -31,7 +29,7 @@ pub fn generate_basic_context(
     lang: &str,
     path: &str,
     session: &Session,
-) -> (Context) 
+) -> Context 
 {    
     let mut ctx = Context::new();
 

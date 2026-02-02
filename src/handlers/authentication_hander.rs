@@ -7,6 +7,8 @@ use actix_session::{SessionExt};
 use actix_identity::{Identity};
 
 use crate::{AppData, generate_basic_context, graphql};
+use crate::graphql::user::get_user_by_email;
+use crate::graphql::authority::get_authorities_by_creator_id;
 
 use super::LoginForm;
 
@@ -66,23 +68,40 @@ pub async fn login_form_input(
     session.insert("role", login_data.role.to_owned())
         .expect("Unable to set role");
 
-    session.insert("user_id", login_data.id.to_owned())
-        .expect("Unable to set user_id");
-
     session.insert("session_user", login_data.email.to_owned())
         .expect("Unable to set user name");
-
-    session.insert("authority_id", login_data.authority_id.to_owned())
-        .expect("Unable to set authority_id");
 
     session.insert("bearer", login_data.bearer.to_owned())
         .expect("Unable to set bearer");
 
-    // Store session expiration time as ISO string
+    // Fetch user details to get user_id
+    if let Ok(user_response) = get_user_by_email(
+        login_data.email.clone(),
+        login_data.bearer.clone(),
+        &data.api_url,
+        Arc::clone(&data.client),
+    ).await {
+        let user_id = user_response.user_by_email.id.clone();
+        session.insert("user_id", user_id.clone())
+            .expect("Unable to set user_id");
 
-    session.insert("expires_at", login_data.expires_at.to_string())
-        .expect("Unable to set expires_at");
-    
+        // Fetch authorities created by this user
+        if let Ok(authorities) = get_authorities_by_creator_id(
+            user_id,
+            login_data.bearer.clone(),
+            &data.api_url,
+            Arc::clone(&data.client),
+        ).await {
+            // If user has at least one authority, store the first one's ID
+            if let Some(authority) = authorities.first() {
+                session.insert("authority_id", authority.id.clone())
+                    .expect("Unable to set authority_id");
+                println!("User has authority: {} ({})", authority.name, authority.id);
+            } else {
+                println!("User has no authorities - may be admin");
+            }
+        }
+    }
 
     return HttpResponse::Found()
         .append_header(("Location", "/"))

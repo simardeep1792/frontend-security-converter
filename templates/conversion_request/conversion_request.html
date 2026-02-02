@@ -7,21 +7,49 @@
                 <p class="text-muted">Submit a document for NATO classification conversion</p>
             </div>
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">
-                    <h2 class="mb-0 h5">Authority Information</h2>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-3">Nation:</dt>
-                        <dd class="col-sm-9">{{ authority.nation.nationName }}</dd>
-                        <dt class="col-sm-3">Code:</dt>
-                        <dd class="col-sm-9"><span class="badge bg-secondary">{{ authority.nation.nationCode }}</span></dd>
-                    </dl>
-                </div>
+            {% if is_admin and not select_authority %}
+            <div class="alert alert-warning shadow-sm mb-4" role="alert">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Admin Mode - Limited Functionality</h4>
+                <p class="mb-0">You are logged in as an administrator without an assigned authority. Document submission requires an authority context to determine the source nation and classification schema.</p>
+                <hr>
+                <p class="mb-0">To submit documents, please log in as a user with an assigned authority, or contact your system administrator to assign an authority to your account.</p>
             </div>
+            {% endif %}
 
-            <form action="/{{ lang }}/submit_document" method=POST id="contentForm" name="contentForm">
+            <form action="/{{ lang }}/submit_document" method="POST" id="contentForm" name="contentForm">
+
+                {% if authority %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="mb-0 h5">Authority Information</h2>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">Authority:</dt>
+                            <dd class="col-sm-9">{{ authority.name }}</dd>
+                            <dt class="col-sm-3">Nation:</dt>
+                            <dd class="col-sm-9">{{ authority.nation.nationName }}</dd>
+                            <dt class="col-sm-3">Code:</dt>
+                            <dd class="col-sm-9"><span class="badge bg-secondary">{{ authority.nation.nationCode }}</span></dd>
+                        </dl>
+                    </div>
+                </div>
+                {% elif select_authority and authorities %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="mb-0 h5">Select Authority</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Please select the authority you are submitting this request on behalf of:</p>
+                        <select name="selected_authority_id" id="selectedAuthorityId" class="form-select form-select-lg" required>
+                            <option value="">-- Select an Authority --</option>
+                            {% for auth in authorities %}
+                            <option value="{{ auth.id }}">{{ auth.name }} ({{ auth.nation.nationName }} - {{ auth.nation.nationCode }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
 
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-primary text-white">
@@ -31,11 +59,19 @@
                         <div class="mb-0">
                             <label for="securityClassificationLevel" class="form-label fw-bold">Security Clearance Level</label>
                             <select id="securityClassificationLevel" name="securityClassificationLevel" class="form-select form-select-lg" placeholder="Select classification level..." required>
+                                {% if authority and authority.mostRecentClassificationSchema %}
                                 <option value="{{ authority.mostRecentClassificationSchema.toNatoUnclassified }}">{{ authority.mostRecentClassificationSchema.toNatoUnclassified }}</option>
                                 <option value="{{ authority.mostRecentClassificationSchema.toNatoRestricted }}">{{ authority.mostRecentClassificationSchema.toNatoRestricted }}</option>
                                 <option value="{{ authority.mostRecentClassificationSchema.toNatoConfidential }}">{{ authority.mostRecentClassificationSchema.toNatoConfidential }}</option>
                                 <option value="{{ authority.mostRecentClassificationSchema.toNatoSecret }}">{{ authority.mostRecentClassificationSchema.toNatoSecret }}</option>
                                 <option value="{{ authority.mostRecentClassificationSchema.toNatoTopSecret }}">{{ authority.mostRecentClassificationSchema.toNatoTopSecret }}</option>
+                                {% else %}
+                                <option value="NATO UNCLASSIFIED">NATO UNCLASSIFIED</option>
+                                <option value="NATO RESTRICTED">NATO RESTRICTED</option>
+                                <option value="NATO CONFIDENTIAL">NATO CONFIDENTIAL</option>
+                                <option value="NATO SECRET">NATO SECRET</option>
+                                <option value="COSMIC TOP SECRET">COSMIC TOP SECRET</option>
+                                {% endif %}
                             </select>
                         </div>
                     </div>
@@ -376,9 +412,15 @@
                 </script>
 
                 <div class="d-grid gap-2 mb-4">
+                    {% if is_admin and not select_authority %}
+                    <button class="btn btn-secondary btn-lg shadow" id="submitDocumentButton" type="button" disabled>
+                        <i class="bi bi-lock-fill"></i> Submit Disabled (No Authority Assigned)
+                    </button>
+                    {% else %}
                     <button class="btn btn-primary btn-lg shadow" id="submitDocumentButton" type="submit">
                         <i class="bi bi-send-fill"></i> Submit Conversion Request
                     </button>
+                    {% endif %}
                 </div>
 
                 <div id="spinnerContainer" class="text-center mb-4" style="display: none;">

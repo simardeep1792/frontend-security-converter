@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}
+    <title>Search Results for "{{ search_term }}"</title>
+{% endblock title %}
+
+{% block content %}
+    <div class="col m-md-2 m-1">
+        <br>
+        <h1>User Search Results</h1>
+        <p class="text-muted">Searching for: <strong>"{{ search_term }}"</strong></p>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <p>Found <strong>{{ result_count }}</strong> user(s)</p>
+
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Access Level</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td><span class="badge bg-secondary">{{ user.role }}</span></td>
+                        <td>{{ user.accessLevel }}</td>
+                        <td>
+                            <a href="/{{ lang }}/user/{{ user.id }}" class="btn btn-sm btn-primary">View Profile</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+            No users found matching "{{ search_term }}". Try a different search term.
+        </div>
+        {% endif %}
+
+        <br>
+        <a href="/{{ lang }}" class="btn btn-secondary">Back to Home</a>
+    </div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+</script>
+{% endblock scripts %}

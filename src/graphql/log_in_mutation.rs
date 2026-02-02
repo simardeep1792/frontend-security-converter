@@ -3,12 +3,10 @@ use serde::{Serialize, Deserialize};
 use std::error::Error;
 use reqwest::Client;
 use std::sync::Arc;
-use chrono::NaiveDateTime;
 
 use crate::graphql::log_in_mutation;
+#[allow(unused_imports)]
 use crate::graphql::log_in::LoginQuery;
-
-type UUID = String;
 #[derive(GraphQLQuery, Serialize, Deserialize)]
 #[graphql(
     schema_path = "schema.graphql",

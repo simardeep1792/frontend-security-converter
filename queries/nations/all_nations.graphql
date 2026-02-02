@@ -1,0 +1,19 @@
+query AllNations {
+  nations {
+    id
+    nationCode
+    nationName
+    createdAt
+    updatedAt
+    authorities {
+      id
+      creatorId
+      name
+      email
+      phone
+      createdAt
+      updatedAt
+      expiresAt
+    }
+  }
+}

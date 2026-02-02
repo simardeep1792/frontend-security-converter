@@ -1,37 +1,15 @@
+# Note: metadataByTag query no longer exists in the new schema
+# Using dataObjectsByTitle as alternative search
 query MetadataByTag($tag: String!) {
-  metadataByTag(tag: $tag) {
+  dataObjectsByTitle(title: $tag) {
     id
-    identifier
-    securityClassification
-    domain
-    tags
-    format
-    formatSize
-    handlingRestrictions
-    releasableToCountries
+    title
+    description
     createdAt
-    dataObject {
+    metadata {
       id
-      title
-      description
-      conversionRequest {
-        id
-        sourceNationClassification
-        sourceNationCode
-        targetNationCodes
-        completedAt
-        conversionResponse {
-          natoEquivalent
-        }
-      }
-    }
-    originatingOrganization {
-      id
-      name
-    }
-    custodianOrganization {
-      id
-      name
+      domain
+      tags
     }
   }
 }

@@ -22,7 +22,10 @@ use crate::handlers::{
     logout,
 
     // user
+    user_index_redirect,
     user_by_id,
+    person_by_name,
+    user_profile,
 
     // authorities
     authority_by_id,
@@ -53,7 +56,10 @@ pub fn configure_services(config: &mut web::ServiceConfig) {
     config.service(logout);
 
     // user
+    config.service(user_index_redirect);
     config.service(user_by_id);
+    config.service(person_by_name);
+    config.service(user_profile);
 
     // authority
     config.service(authority_by_id);

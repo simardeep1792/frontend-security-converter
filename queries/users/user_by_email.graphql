@@ -1,5 +1,5 @@
-query UserById($id: UUID!) {
-  userById(id: $id) {
+query UserByEmail($email: String!) {
+  userByEmail(email: $email) {
     id
     email
     role

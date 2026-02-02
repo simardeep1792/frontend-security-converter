@@ -4,48 +4,54 @@ use std::error::Error;
 use reqwest::Client;
 use std::sync::Arc;
 
-use chrono::NaiveDateTime;
-use serde_json::Value as JSON;
-
-use crate::graphql::conversion_request;
-use crate::graphql::submit_conversion::{ConversionRequestInput, DataObjectInput, MetadataInput};
-
-use crate::handlers::conversion_response::InsertableConversionRequest;
-
+// Type aliases for GraphQL scalar types
 type UUID = String;
-type JSONObject = serde_json::Value;
+type NaiveDateTime = String;
+
+/// Input struct matching the new SubmitConversionRequestInput from schema
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubmitConversionInput {
+    pub authority_id: String,
+    pub data_object_title: String,
+    pub data_object_description: String,
+    pub metadata_domain: String,
+    pub metadata_tags: Vec<String>,
+    pub source_nation_code: String,
+    pub target_nation_codes: Vec<String>,
+}
 
 #[derive(GraphQLQuery, Serialize, Deserialize)]
 #[graphql(
     schema_path = "schema.graphql",
     query_path = "queries/conversion_request.graphql",
-    response_derives = "Debug, Serialize, PartialEq"
+    response_derives = "Debug, Serialize, PartialEq, Clone"
 )]
-pub struct SubmitConversion; 
+pub struct SubmitConversion;
 
-pub async fn submit_conversion_request(conversion_request: InsertableConversionRequest, api_url: &str, client: Arc<Client>, bearer: String) -> Result<submit_conversion::ResponseData, Box<dyn Error>> {
+pub async fn submit_conversion_request(
+    input: SubmitConversionInput,
+    api_url: &str,
+    client: Arc<Client>,
+    bearer: String,
+) -> Result<submit_conversion::ResponseData, Box<dyn Error>> {
 
-    let data_object = DataObjectInput::from(conversion_request.data_object);
-
-    let metadata = MetadataInput::from(conversion_request.metadata);
-
-    let input = conversion_request::ConversionRequestInput{
-        user_id: conversion_request.user_id,
-        authority_id: conversion_request.authority_id,
-        data_object: data_object,
-        metadata: metadata,
-        source_nation_classification: conversion_request.source_nation_classification,
-        source_nation_code: conversion_request.source_nation_code,
-        target_nation_codes: conversion_request.target_nation_codes,
+    let gql_input = submit_conversion::SubmitConversionRequestInput {
+        authority_id: input.authority_id,
+        data_object_title: input.data_object_title,
+        data_object_description: input.data_object_description,
+        metadata_domain: input.metadata_domain,
+        metadata_tags: input.metadata_tags,
+        source_nation_code: input.source_nation_code,
+        target_nation_codes: input.target_nation_codes,
     };
 
     let request_body = SubmitConversion::build_query(submit_conversion::Variables {
-        input,
+        input: gql_input,
     });
 
     let res = client
         .post(api_url)
-            .header("Authorization", format!("Bearer {}", bearer))
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;
@@ -53,19 +59,18 @@ pub async fn submit_conversion_request(conversion_request: InsertableConversionR
     let response_body: Response<submit_conversion::ResponseData> = res.json().await?;
 
     if let Some(errors) = response_body.errors {
-        println!("there are errors:");
-
+        println!("GraphQL errors:");
         for error in &errors {
             println!("{:?}", error);
         }
-    };
+        return Err(format!("GraphQL error: {:?}", errors).into());
+    }
 
     let response = response_body.data
-        .expect("missing response data");
+        .ok_or("Missing response data from submitConversionRequest")?;
 
-    println!("{:?}", &response);
+    println!("Conversion request submitted successfully: {:?}", &response);
 
-    // serve HTML page with response_body
     Ok(response)
 }
 
@@ -85,7 +90,7 @@ pub async fn get_conversion_request_by_id(id: String, bearer: String, api_url: &
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;

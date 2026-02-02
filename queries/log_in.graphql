@@ -1,10 +1,7 @@
 mutation LogIn($auth_data: LoginQuery!) {
     signIn(input: $auth_data) {
-		id
-    	email
-    	bearer
-    	role
-		authorityId
-		expiresAt
-  }
+        email
+        bearer
+        role
+    }
 }

@@ -1,72 +1,17 @@
-query AuthorityById($id:UUID!) {
-  authorityById(id:$id) {
+query AuthorityById($id: UUID!) {
+  authorityById(id: $id) {
     id
     nationId
     name
     email
     phone
-    mostRecentClassificationSchema {
-      id
-      fromNatoUnclassified
-      fromNatoRestricted
-      fromNatoConfidential
-      fromNatoSecret
-      fromNatoTopSecret
-      toNatoUnclassified
-      toNatoRestricted
-      toNatoConfidential
-      toNatoSecret
-      toNatoTopSecret
-    }
+    createdAt
+    updatedAt
+    expiresAt
     nation {
       id
       nationName
       nationCode
-    }
-    conversionRequests {
-      id
-      authorityId
-      dataObjectId
-      sourceNationClassification
-      sourceNationCode
-      targetNationCodes
-      createdAt
-      updatedAt
-      completedAt
-      dataObject {
-        title
-        description
-      }
-      metadata {
-        identifier
-        authorizationReference
-        authorizationReferenceDate
-        format
-        formatSize
-        securityClassification
-        releasableToCountries
-        releasableToOrganizations
-        releasableToCategories
-        disclosureCategory
-        handlingRestrictions
-        handlingAuthority
-        noHandlingRestrictions
-        domain
-        tags
-        createdAt
-        custodianOrganization {
-          id
-          name
-        }
-        originatingOrganization {
-          id
-          name
-        }
-      }
-      conversionResponse {
-        conversionRequestId
-        natoEquivalent
-      }
     }
   }
 }

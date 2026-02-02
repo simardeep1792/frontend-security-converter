@@ -5,19 +5,18 @@ use actix_session::{SessionExt};
 use actix_identity::{Identity};
 use serde::{Serialize, Deserialize};
 use chrono::{NaiveDateTime};
-
-use ollama_rs::{
-    generation::{
-        completion::request::GenerationRequest, parameters::{FormatType, JsonSchema, JsonStructure}
-    }, models::ModelOptions
-};
+use schemars::JsonSchema;
 
 use uuid::Uuid;
 
-use crate::{AppData, generate_basic_context, graphql::{get_authority_by_id, submit_conversion_request}};
+use crate::{AppData, generate_basic_context, graphql::{get_authority_by_id, submit_conversion_request, SubmitConversionInput}};
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DocumentSubmissionForm {
+
+    // Selected authority (for users without pre-assigned authority)
+    #[serde(rename = "selected_authority_id")]
+    pub selected_authority_id: Option<String>,
 
     #[serde(rename = "securityClassificationLevel")]
     pub security_classification_level: String,
@@ -107,14 +106,8 @@ pub struct InsertableDataObject {
     pub description: String,   // GraphQL input as plain String
 }
 
-impl From<InsertableDataObject> for crate::graphql::submit_conversion::DataObjectInput {
-    fn from(data: InsertableDataObject) -> Self {
-        crate::graphql::submit_conversion::DataObjectInput {
-            title: data.title,
-            description: data.description,
-        }
-    }
-}
+// Note: DataObjectInput type no longer exists in the new schema
+// The submitConversionRequest mutation uses SubmitConversionRequestInput directly
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct LLMFields {
@@ -186,29 +179,8 @@ pub struct InsertableMetadata {
     pub tags: Vec<Option<String>>,
 }
 
-impl From<InsertableMetadata> for crate::graphql::submit_conversion::MetadataInput {
-    fn from(metadata: InsertableMetadata) -> Self {
-        crate::graphql::submit_conversion::MetadataInput {
-            identifier: metadata.identifier,
-            authorization_reference: metadata.authorization_reference,
-            authorization_reference_date: metadata.authorization_reference_date,
-            originator_organization_id: metadata.originator_organization_id.to_string(),
-            custodian_organization_id: metadata.custodian_organization_id.to_string(),
-            format: metadata.format,
-            format_size: metadata.format_size,
-            security_classification: metadata.security_classification,
-            releasable_to_countries: metadata.releasable_to_countries,
-            releasable_to_organizations: metadata.releasable_to_organizations,
-            releasable_to_categories: metadata.releasable_to_categories,
-            disclosure_category: metadata.disclosure_category,
-            handling_restrictions: metadata.handling_restrictions,
-            handling_authority: metadata.handling_authority,
-            no_handling_restrictions: metadata.no_handling_restrictions,
-            domain: format!("{:?}", metadata.domain),
-            tags: metadata.tags,
-        }
-    }
-}
+// Note: MetadataInput type no longer exists in the new schema
+// The submitConversionRequest mutation uses SubmitConversionRequestInput directly
 
 #[derive(JsonSchema, Deserialize, Debug, Clone, Serialize)]
 pub enum Domain {
@@ -228,18 +200,23 @@ pub enum Domain {
 pub async fn submit_document(
     path: web::Path<String>,
     data: web::Data<AppData>,
-    req: HttpRequest, 
+    req: HttpRequest,
     form: web::Form<DocumentSubmissionForm>,
     id: Option<Identity>,
 ) -> impl Responder {
+
+    println!("=== SUBMIT_DOCUMENT HANDLER CALLED ===");
 
     let lang = path.into_inner();
 
     let session = req.get_session();
 
+    println!("Form content length: {}", form.content.len());
+    println!("Selected authority_id from form: {:?}", form.selected_authority_id);
+
     // validate form has data or re-load form
     if form.content.is_empty() {
-        println!("Form is empty");
+        println!("Form is empty - redirecting");
         return HttpResponse::Found().append_header(("Location", format!("/{}", &lang))).finish()
     };
 
@@ -255,15 +232,37 @@ pub async fn submit_document(
         None => "".to_string(),
     };
 
+    // Get authority_id from session, or from form if user selected one
     let authority_id = match req.get_session().get::<String>("authority_id").unwrap() {
-        Some(s) => s,
-        None => "".to_string(),
+        Some(s) if !s.is_empty() => s,
+        _ => {
+            // Try to get from form submission (user selected an authority)
+            match &form.selected_authority_id {
+                Some(id) if !id.is_empty() => id.clone(),
+                _ => {
+                    println!("No authority_id in session or form");
+                    return HttpResponse::Found()
+                        .append_header(("Location", format!("/{}/conversion_request?error=no_authority_selected", &lang)))
+                        .finish();
+                }
+            }
+        }
     };
 
-    let authority = get_authority_by_id(authority_id, bearer.clone(), &data.api_url, Arc::clone(&data.client))
-        .await
-        .expect("Unable to retrieve authority")
-        .authority_by_id;
+    println!("Fetching authority with id: {}", authority_id);
+
+    let authority = match get_authority_by_id(authority_id.clone(), bearer.clone(), &data.api_url, Arc::clone(&data.client)).await {
+        Ok(response) => {
+            println!("Authority fetched successfully: {}", response.authority_by_id.name);
+            response.authority_by_id
+        }
+        Err(e) => {
+            println!("Error fetching authority: {:?}", e);
+            return HttpResponse::Found()
+                .append_header(("Location", format!("/{}/conversion_request?error=authority_fetch_failed", &lang)))
+                .finish();
+        }
+    };
 
     // Handle form - target nations
     let mut target_nations = Vec::new();
@@ -324,14 +323,8 @@ pub async fn submit_document(
     if form.propin != None { handling_restrictions.push("PROPIN".to_owned());};
     if form.orcon != None { handling_restrictions.push("ORCON".to_owned());};
 
-    // Use LLLM to generate DataObject
-
-    let data_obj_format = FormatType::StructuredJson(Box::new(JsonStructure::new::<LLMFields>()));
-
-    // Options: llama3:8b, mistral:7b, gemma2:27b (best accuracy)
-    // Using Llama3 8B for balanced performance
-
-    let model = "llama3:8b".to_owned();
+    // Use LLM to generate DataObject
+    // Build the prompt for structured JSON extraction
     let prompt = format!(
         "Extract security metadata from this document as valid JSON.\n\n\
         Document: {}\n\n\
@@ -343,43 +336,42 @@ pub async fn submit_document(
         - identifier: Unique ID in format ORG-DOMAIN-DATE-XXXX (required string)\n\
         - For optional arrays: use empty array [] if no values, never null\n\
         - For optional strings: use null if no value\n\n\
-        Schema: {:?}\n\n\
-        Output valid JSON only:", 
-        &form.content,
-        &data_obj_format
+        Output valid JSON matching this schema:\n\
+        {{\n\
+          \"title\": \"string\",\n\
+          \"description\": \"string\",\n\
+          \"domain\": \"INTEL|CYBER|OPERATIONS|LOGISTICS|COMMUNICATIONS|NUCLEAR|COUNTERTERRORISM|MARITIME|AEROSPACE|SPECIALOPS\",\n\
+          \"tags\": [\"string\"],\n\
+          \"identifier\": \"string\",\n\
+          \"authorization_reference\": \"string or null\",\n\
+          \"releasable_to_countries\": [\"string\"] or null,\n\
+          \"releasable_to_organizations\": [\"string\"] or null,\n\
+          \"releasable_to_categories\": [\"string\"] or null,\n\
+          \"disclosure_category\": \"string or null\",\n\
+          \"handling_restrictions\": [\"string\"] or null,\n\
+          \"handling_authority\": \"string or null\",\n\
+          \"no_handling_restrictions\": true/false or null\n\
+        }}\n\n\
+        Output valid JSON only:",
+        &form.content
     );
 
-    let ollama = &data.llm;
+    let llm = &data.llm;
 
-    println!("Starting LLM generation using {}", &model);
+    println!("Starting LLM generation using {} provider", llm.provider_name());
 
-    let start = chrono::Utc::now();
-
-    let data_res = ollama
-        .generate(
-            GenerationRequest::new(
-                model, 
-                prompt)
-        .format(data_obj_format)
-        .options(
-            ModelOptions::default()
-                .temperature(0.2)
-                .top_k(40)              // Focus on best token choices for structured output
-                .top_p(0.9)             // High quality sampling for JSON
-                .repeat_penalty(1.1)    // Prevent repetitive JSON fields
-                .num_predict(2048)      // Ensure sufficient space for complete JSON
-        ),
-        )
+    let llm_response = llm.generate(&prompt, None)
         .await
         .expect("Unable to retrieve LLM generated content");
 
-    let llm_fields: LLMFields = serde_json::from_str(&data_res.response)
-        .expect("Unable to derive LLMfields from LLM");
+    let llm_fields: LLMFields = serde_json::from_str(&llm_response.content)
+        .expect("Unable to derive LLMfields from LLM response");
 
-    let end = chrono::Utc::now();
-
-    let time_to_generation = end - start;
-    println!("LLM Generation Completed in {} seconds", time_to_generation.abs().num_seconds());
+    if let Some(duration) = llm_response.duration_ms {
+        println!("LLM Generation Completed in {} ms using model {}", duration, llm_response.model);
+    } else {
+        println!("LLM Generation Completed using model {}", llm_response.model);
+    }
 
     let data_struct: InsertableDataObject = InsertableDataObject { 
         title: llm_fields.title, 
@@ -577,68 +569,6 @@ pub async fn confirm_conversion(
         None => "".to_string(),
     };
 
-    // Helper function to parse comma-separated string into Vec<Option<String>>
-    fn parse_csv(s: &str) -> Option<Vec<Option<String>>> {
-        if s.trim().is_empty() {
-            None
-        } else {
-            Some(
-                s.split(',')
-                    .map(|item| item.trim())
-                    .filter(|item| !item.is_empty())
-                    .map(|item| Some(item.to_string()))
-                    .collect()
-            )
-        }
-    }
-
-    // Parse domain back to enum
-    let domain = match form.domain.as_str() {
-        "INTEL" => Domain::INTEL,
-        "CYBER" => Domain::CYBER,
-        "OPERATIONS" => Domain::OPERATIONS,
-        "LOGISTICS" => Domain::LOGISTICS,
-        "COMMUNICATIONS" => Domain::COMMUNICATIONS,
-        "NUCLEAR" => Domain::NUCLEAR,
-        "COUNTERTERRORISM" => Domain::COUNTERTERRORISM,
-        "MARITIME" => Domain::MARITIME,
-        "AEROSPACE" => Domain::AEROSPACE,
-        "SPECIALOPS" => Domain::SPECIALOPS,
-        _ => Domain::OPERATIONS, // default
-    };
-
-    // Parse authorization_reference_date
-    let auth_ref_date = form.authorization_reference_date.as_ref()
-        .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f").ok());
-
-    // Reconstruct the InsertableConversionRequest from validated form data
-    let data_struct = InsertableDataObject {
-        title: form.title.clone(),
-        description: form.description.clone(),
-    };
-
-    let meta_struct = InsertableMetadata {
-        identifier: form.identifier.clone(),
-        authorization_reference: form.authorization_reference.clone(),
-        authorization_reference_date: auth_ref_date,
-        originator_organization_id: Uuid::parse_str(&form.originator_organization_id)
-            .expect("Invalid originator_organization_id"),
-        custodian_organization_id: Uuid::parse_str(&form.custodian_organization_id)
-            .expect("Invalid custodian_organization_id"),
-        format: form.format.clone(),
-        format_size: form.format_size,
-        security_classification: form.security_classification.clone(),
-        releasable_to_countries: parse_csv(&form.releasable_to_countries),
-        releasable_to_organizations: parse_csv(&form.releasable_to_organizations),
-        releasable_to_categories: parse_csv(&form.releasable_to_categories),
-        disclosure_category: form.disclosure_category.clone(),
-        handling_restrictions: parse_csv(&form.handling_restrictions),
-        handling_authority: form.handling_authority.clone(),
-        no_handling_restrictions: form.no_handling_restrictions.as_ref().map(|_| true),
-        domain: domain,
-        tags: parse_csv(&form.tags).unwrap_or_default(),
-    };
-
     // Parse target_nation_codes back to Vec<String>
     let target_nations: Vec<String> = form.target_nation_codes
         .split(',')
@@ -646,35 +576,52 @@ pub async fn confirm_conversion(
         .filter(|s| !s.is_empty())
         .collect();
 
-    let conversion_request = InsertableConversionRequest {
-        user_id: form.user_id.clone(),
+    // Parse tags from comma-separated string
+    let tags: Vec<String> = form.tags
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    // Build the simplified SubmitConversionInput for the new API
+    let conversion_input = SubmitConversionInput {
         authority_id: form.authority_id.clone(),
-        data_object: data_struct,
-        metadata: meta_struct,
-        source_nation_classification: form.source_nation_classification.clone(),
+        data_object_title: form.title.clone(),
+        data_object_description: form.description.clone(),
+        metadata_domain: form.domain.clone(),
+        metadata_tags: tags,
         source_nation_code: form.source_nation_code.clone(),
         target_nation_codes: target_nations,
     };
 
-    println!("Submitting validated conversion request: {:?}", conversion_request);
+    println!("Submitting conversion request: {:?}", conversion_input);
 
     // Submit to API
-    let response = submit_conversion_request(
-        conversion_request,
+    match submit_conversion_request(
+        conversion_input,
         &data.api_url,
         Arc::clone(&data.client),
         bearer
     )
-    .await
-    .expect("Unable to get ConversionResponse from server");
+    .await {
+        Ok(response) => {
+            // Clear session data
+            session.remove("conversion_request");
 
-    // Clear session data
-    session.remove("conversion_request");
+            // Generate Response for User
+            ctx.insert("conversion_response", &response);
 
-    // Generate Response for User
-    ctx.insert("conversion_response", &response);
+            let rendered = data.tmpl.render("conversion_request/conversion_response.html", &ctx).unwrap();
+            HttpResponse::Ok().body(rendered)
+        }
+        Err(e) => {
+            // Handle the error - the submitConversionRequest mutation may not exist
+            println!("Error submitting conversion request: {:?}", e);
+            ctx.insert("error", &format!("Unable to submit conversion request: {}", e));
 
-    let rendered = data.tmpl.render("conversion_request/conversion_response.html", &ctx).unwrap();
-    HttpResponse::Ok().body(rendered)
+            let rendered = data.tmpl.render("conversion_request/conversion_error.html", &ctx).unwrap();
+            HttpResponse::InternalServerError().body(rendered)
+        }
+    }
 }
 

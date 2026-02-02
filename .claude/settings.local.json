@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(cargo run:*)",
+      "Bash(where:*)",
+      "Bash(cmd /c \"where cargo\")",
+      "Bash(powershell -Command:*)",
+      "Bash(C:Usersravi_.cargobincargo.exe --version)",
+      "Bash(cmd /c \"C:\\\\Users\\\\ravi_\\\\.cargo\\\\bin\\\\cargo.exe --version\")",
+      "Bash(cmd /c \"dir C:\\\\Users\\\\ravi_\\\\.cargo\\\\bin\"\")",
+      "Bash(cmd /c dir \"C:\\\\Users\\\\ravi_\\\\.cargo\\\\bin\")",
+      "Bash(gcloud:*)",
+      "Bash(cargo build:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File deploy-to-gcp.ps1)",
+      "Bash(powershell.exe -Command \"Set-Location ''X:\\\\ravi\\\\dev\\\\frontend-security-converter''; tar --exclude=''target'' --exclude=''.git'' --exclude=''deploy/*.tar.gz'' -cvf deploy/frontend-source.tar .\")",
+      "Bash(powershell.exe -Command \"Set-Location ''X:\\\\ravi\\\\dev\\\\frontend-security-converter\\\\deploy''; gzip -f frontend-source.tar\")",
+      "Bash(powershell.exe -Command \"Test-Path ''X:\\\\ravi\\\\dev\\\\frontend-security-converter\\\\deploy\\\\frontend-source.tar.gz''\")",
+      "Bash(cargo check:*)",
+      "Bash(cargo.exe check:*)",
+      "Bash(cmd /c \"cd /d x:\\\\ravi\\\\dev\\\\frontend-security-converter && cargo check 2>&1\")",
+      "Bash(cmd /c \"cargo check 2>&1\")",
+      "Bash(cmd /c \"cd /d x:\\\\ravi\\\\dev\\\\frontend-security-converter && cargo check\")",
+      "Bash(C:Usersravi_.cargobincargo.exe check)",
+      "Bash(\"/mnt/c/Users/ravi_/.cargo/bin/cargo.exe\" check)",
+      "Bash(git add:*)"
+    ]
+  }
+}

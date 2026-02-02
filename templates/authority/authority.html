@@ -12,10 +12,10 @@
         <div class="d-flex justify-content-between align-items-start">
             <div>
                 <h1 class="display-5 mb-1">{{ authority.name }}</h1>
-                <p class="text-muted">Authority Details and Classification Information</p>
+                <p class="text-muted">Authority Details</p>
             </div>
-            <a href="/{{ lang }}/authority_analytics/{{ authority.id }}" class="btn btn-primary">
-                📊 View Analytics
+            <a href="/{{ lang }}" class="btn btn-secondary">
+                ← Back to Home
             </a>
         </div>
     </div>
@@ -54,202 +54,28 @@
         </div>
     </div>
 
-    {% if authority.mostRecentClassificationSchema %}
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white">
-                    <h3 class="mb-0 h5">Classification to NATO</h3>
+                <div class="card-header bg-secondary text-white">
+                    <h3 class="mb-0 h5">Timestamps</h3>
                 </div>
                 <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO UNCLASSIFIED</strong>
-                            <span class="badge bg-light text-dark">{{ authority.mostRecentClassificationSchema.toNatoUnclassified }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO RESTRICTED</strong>
-                            <span class="badge bg-primary">{{ authority.mostRecentClassificationSchema.toNatoRestricted }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO CONFIDENTIAL</strong>
-                            <span class="badge bg-warning text-dark">{{ authority.mostRecentClassificationSchema.toNatoConfidential }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO SECRET</strong>
-                            <span class="badge bg-danger">{{ authority.mostRecentClassificationSchema.toNatoSecret }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO TOP SECRET</strong>
-                            <span class="badge bg-dark">{{ authority.mostRecentClassificationSchema.toNatoTopSecret }}</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0 h5">Classification from NATO</h3>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO UNCLASSIFIED</strong>
-                            <span class="badge bg-light text-dark">{{ authority.mostRecentClassificationSchema.fromNatoUnclassified }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO RESTRICTED</strong>
-                            <span class="badge bg-primary">{{ authority.mostRecentClassificationSchema.fromNatoRestricted }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO CONFIDENTIAL</strong>
-                            <span class="badge bg-warning text-dark">{{ authority.mostRecentClassificationSchema.fromNatoConfidential }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO SECRET</strong>
-                            <span class="badge bg-danger">{{ authority.mostRecentClassificationSchema.fromNatoSecret }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <strong>NATO TOP SECRET</strong>
-                            <span class="badge bg-dark">{{ authority.mostRecentClassificationSchema.fromNatoTopSecret }}</span>
-                        </li>
-                    </ul>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Created:</dt>
+                        <dd class="col-sm-8">{{ authority.createdAt }}</dd>
+                        <dt class="col-sm-4">Updated:</dt>
+                        <dd class="col-sm-8">{{ authority.updatedAt }}</dd>
+                        {% if authority.expiresAt %}
+                        <dt class="col-sm-4">Expires:</dt>
+                        <dd class="col-sm-8">{{ authority.expiresAt }}</dd>
+                        {% endif %}
+                    </dl>
                 </div>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="alert alert-warning shadow-sm" role="alert">
-        <i class="bi bi-exclamation-triangle-fill"></i> No Classification Schema for {{ authority.name }}
-    </div>
-    {% endif %}
 
-    <div class="mb-4">
-        <h2 class="h3 mb-3">Conversion Requests</h2>
-
-        {% if authority.conversionRequests %}
-        <div class="row">
-            {% for request in authority.conversionRequests %}
-            <div class="col-lg-6 mb-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong class="mb-0">{{ request.dataObject.title }}</strong>
-                        {% if request.completedAt %}
-                        <span class="badge bg-success">Completed</span>
-                        {% else %}
-                        <span class="badge bg-warning text-dark">Pending</span>
-                        {% endif %}
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small mb-3">{{ request.dataObject.description }}</p>
-
-                        <div class="mb-3">
-                            <h6 class="border-bottom pb-2 mb-2">Request Information</h6>
-                            <dl class="row small mb-0">
-                                <dt class="col-sm-5">Source Classification:</dt>
-                                <dd class="col-sm-7"><span class="badge bg-secondary">{{ request.sourceNationClassification }}</span></dd>
-                                <dt class="col-sm-5">Source Nations:</dt>
-                                <dd class="col-sm-7">{{ request.sourceNationCode }}</dd>
-                                <dt class="col-sm-5">Created:</dt>
-                                <dd class="col-sm-7">{{ request.createdAt }}</dd>
-                                {% if request.completedAt %}
-                                <dt class="col-sm-5">Completed:</dt>
-                                <dd class="col-sm-7">{{ request.completedAt }}</dd>
-                                {% endif %}
-                            </dl>
-                        </div>
-
-                        {% if request.conversionResponse %}
-                        <div class="alert alert-success mb-3">
-                            <h6 class="alert-heading mb-2">NATO Equivalent Classification</h6>
-                            <strong class="fs-5">{{ request.conversionResponse.natoEquivalent }}</strong>
-                        </div>
-                        {% endif %}
-
-                        {% if request.metadata %}
-                        <details class="border rounded p-2 mb-3">
-                            <summary class="cursor-pointer fw-bold text-primary">Document Metadata</summary>
-                            <div class="mt-2">
-                                <dl class="row small mb-0">
-                                    {% if request.metadata.identifier %}
-                                    <dt class="col-sm-5">Identifier:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.identifier }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.authorizationReference %}
-                                    <dt class="col-sm-5">Authorization Reference:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.authorizationReference }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.authorizationReferenceDate %}
-                                    <dt class="col-sm-5">Authorization Date:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.authorizationReferenceDate }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.format %}
-                                    <dt class="col-sm-5">Format:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.format }} ({{ request.metadata.formatSize }})</dd>
-                                    {% endif %}
-                                    {% if request.metadata.securityClassification %}
-                                    <dt class="col-sm-5">Security Classification:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.securityClassification }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.custodianOrganization %}
-                                    <dt class="col-sm-5">Custodian:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.custodianOrganization.name }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.originatingOrganization %}
-                                    <dt class="col-sm-5">Originating Organization:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.originatingOrganization.name }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.releasableToCountries %}
-                                    <dt class="col-sm-5">Releasable To Countries:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.releasableToCountries }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.releasableToOrganizations %}
-                                    <dt class="col-sm-5">Releasable To Organizations:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.releasableToOrganizations }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.handlingRestrictions %}
-                                    <dt class="col-sm-5">Handling Restrictions:</dt>
-                                    <dd class="col-sm-7">{{ request.metadata.handlingRestrictions }}</dd>
-                                    {% endif %}
-                                    {% if request.metadata.domain %}
-                                    <dt class="col-sm-5">Domain:</dt>
-                                    <dd class="col-sm-7">
-                                        <a href="/{{ lang }}/metadata/domain/{{ request.metadata.domain }}" class="badge badge-domain-link">{{ request.metadata.domain }}</a>
-                                    </dd>
-                                    {% endif %}
-                                    {% if request.metadata.tags %}
-                                    <dt class="col-sm-5">Tags:</dt>
-                                    <dd class="col-sm-7">
-                                        {% for tag in request.metadata.tags %}
-                                            {% if tag %}
-                                            <a href="/{{ lang }}/metadata/tag/{{ tag }}" class="badge badge-tag me-1">{{ tag }}</a>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </dd>
-                                    {% endif %}
-                                </dl>
-                            </div>
-                        </details>
-                        {% endif %}
-
-                        <a href="/{{ lang }}/conversion_request/{{ request.id }}" class="btn btn-primary btn-sm w-100">
-                            <i class="bi bi-eye"></i> View Full Details
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="alert alert-info shadow-sm" role="alert">
-            <i class="bi bi-info-circle-fill"></i> No conversion requests found for this authority.
-        </div>
-        {% endif %}
-    </div>
 </div>
-
-
 
 {% endblock content %}
