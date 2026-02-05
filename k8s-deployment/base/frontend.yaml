@@ -72,7 +72,7 @@ spec:
               cpu: "50m"
       containers:
         - name: frontend
-          image: simardeep1792/security-converter-frontend:latest
+          image: northamerica-northeast1-docker.pkg.dev/sandbox-caf-compute-hub/security-converter/frontend:latest
           imagePullPolicy: Always
           ports:
             - name: http
