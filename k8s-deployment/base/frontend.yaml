@@ -9,8 +9,10 @@ metadata:
     component: frontend
 type: Opaque
 data:
-  # 64-byte secret key (base64 encoded - exactly 64 bytes when decoded)  
+  # 64-byte secret key (base64 encoded - exactly 64 bytes when decoded)
   COOKIE_SECRET_KEY: YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjAxMjM0NTY3ODlhYg==
+  # Gemini API key for LLM integration
+  GEMINI_API_KEY: QUl6YVN5QUVrM2NwenJWVmdHR242R2dsWjRCX3plMVhNWFFiOGN3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -87,11 +89,24 @@ spec:
             # Backend API connection - internal cluster service
             - name: GRAPHQL_API_TARGET
               value: "http://security-converter-api.security-converter.svc.cluster.local/graphql"
-            # Ollama LLM service connection
+            # LLM Provider Configuration
+            - name: LLM_PROVIDER
+              value: "gemini"  # Options: "ollama" or "gemini"
+            # Ollama LLM service connection (used if LLM_PROVIDER=ollama)
             - name: OLLAMA_HOST
               value: "http://ollama-service.security-converter.svc.cluster.local"
             - name: OLLAMA_PORT
               value: "8000"
+            - name: OLLAMA_MODEL
+              value: "llama3:8b"
+            # Gemini configuration (used if LLM_PROVIDER=gemini)
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secrets
+                  key: GEMINI_API_KEY
+            - name: GEMINI_MODEL
+              value: "gemini-1.5-flash"
             # Secrets
             - name: COOKIE_SECRET_KEY
               valueFrom:
