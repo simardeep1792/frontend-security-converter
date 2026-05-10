@@ -2,13 +2,13 @@ pub mod models;
 pub mod handlers;
 pub mod graphql;
 pub mod errors;
+pub mod llm;
 
 use tera::{Tera, Context};
 use actix_identity::Identity;
 use actix_session::Session;
 use reqwest::Client;
 use std::sync::Arc;
-use ollama_rs::Ollama;
 
 
 extern crate strum;
@@ -22,7 +22,6 @@ pub struct AppData {
     pub tmpl: Tera,
     pub api_url: String,
     pub client: Arc<Client>,
-    pub llm: Ollama,
 }
 
 /// Generate context, session_user, role and node_names from id and lang
@@ -101,4 +100,3 @@ pub fn extract_session_data(session: &Session) -> (String, String, String, Strin
 
     (role, user_id, authority_id, expires_at)
 }
-

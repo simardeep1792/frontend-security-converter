@@ -85,7 +85,7 @@ pub async fn get_conversion_request_by_id(id: String, bearer: String, api_url: &
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;

@@ -9,7 +9,7 @@ metadata:
     app: security-converter
 spec:
   domains:
-    - security-converter.obrienlabs.dev
+    - security-converter.simardeep.xyz
 
 ---
 # Unified ingress extending existing backend ingress
@@ -30,7 +30,7 @@ metadata:
     cloud.google.com/backend-config: '{"default": "frontend-backend-config", "security-converter-api": "api-backend-config"}'
 spec:
   rules:
-  - host: security-converter.obrienlabs.dev
+  - host: security-converter.simardeep.xyz
     http:
       paths:
       # Backend API routes - MUST be first and specific

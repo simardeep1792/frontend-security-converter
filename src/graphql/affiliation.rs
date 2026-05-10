@@ -22,7 +22,7 @@ pub fn get_people_by_name(name: String, bearer: String) -> Result<affiliation_by
     let client = reqwest::blocking::Client::new();
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()?;
 
@@ -60,7 +60,7 @@ pub fn get_affiliation_by_id(id: UUID, bearer: String) -> Result<affiliation_by_
     let client = reqwest::blocking::Client::new();
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()?;
 

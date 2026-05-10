@@ -6,15 +6,12 @@ use actix_identity::{Identity};
 use serde::{Serialize, Deserialize};
 use chrono::{NaiveDateTime};
 
-use ollama_rs::{
-    generation::{
-        completion::request::GenerationRequest, parameters::{FormatType, JsonSchema, JsonStructure}
-    }, models::ModelOptions
-};
+use schemars::JsonSchema;
 
 use uuid::Uuid;
 
 use crate::{AppData, generate_basic_context, graphql::{get_authority_by_id, submit_conversion_request}};
+use crate::llm::ollama::extract_metadata_with_ollama;
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DocumentSubmissionForm {
@@ -324,62 +321,27 @@ pub async fn submit_document(
     if form.propin != None { handling_restrictions.push("PROPIN".to_owned());};
     if form.orcon != None { handling_restrictions.push("ORCON".to_owned());};
 
-    // Use LLLM to generate DataObject
-
-    let data_obj_format = FormatType::StructuredJson(Box::new(JsonStructure::new::<LLMFields>()));
-
-    // Options: llama3:8b, mistral:7b, gemma2:27b (best accuracy)
-    // Using Llama3 8B for balanced performance
-
-    let model = "llama3:8b".to_owned();
-    let prompt = format!(
-        "Extract security metadata from this document as valid JSON.\n\n\
-        Document: {}\n\n\
-        Requirements:\n\
-        - title: Clear descriptive title (required string)\n\
-        - description: 2-sentence summary (required string)\n\
-        - domain: One of INTEL, CYBER, OPERATIONS, LOGISTICS, COMMUNICATIONS, NUCLEAR, COUNTERTERRORISM, MARITIME, AEROSPACE, SPECIALOPS\n\
-        - tags: Array of 3-6 classification tags (required array of strings)\n\
-        - identifier: Unique ID in format ORG-DOMAIN-DATE-XXXX (required string)\n\
-        - For optional arrays: use empty array [] if no values, never null\n\
-        - For optional strings: use null if no value\n\n\
-        Schema: {:?}\n\n\
-        Output valid JSON only:", 
-        &form.content,
-        &data_obj_format
-    );
-
-    let ollama = &data.llm;
-
-    println!("Starting LLM generation using {}", &model);
-
+    println!("Starting LLM generation using Ollama");
     let start = chrono::Utc::now();
 
-    let data_res = ollama
-        .generate(
-            GenerationRequest::new(
-                model, 
-                prompt)
-        .format(data_obj_format)
-        .options(
-            ModelOptions::default()
-                .temperature(0.2)
-                .top_k(40)              // Focus on best token choices for structured output
-                .top_p(0.9)             // High quality sampling for JSON
-                .repeat_penalty(1.1)    // Prevent repetitive JSON fields
-                .num_predict(2048)      // Ensure sufficient space for complete JSON
-        ),
-        )
+    let llm_response = extract_metadata_with_ollama(
+        data.client.as_ref(),
+        &form.content,
+        &target_nations,
+        &releasable_orgs,
+        &handling_restrictions,
+    )
         .await
-        .expect("Unable to retrieve LLM generated content");
+        .expect("Unable to retrieve Ollama generated content");
 
-    let llm_fields: LLMFields = serde_json::from_str(&data_res.response)
-        .expect("Unable to derive LLMfields from LLM");
+    let llm_fields: LLMFields = serde_json::from_str(&llm_response)
+        .expect("Unable to parse LLMFields from Ollama response");
 
     let end = chrono::Utc::now();
-
-    let time_to_generation = end - start;
-    println!("LLM Generation Completed in {} seconds", time_to_generation.abs().num_seconds());
+    println!(
+        "Ollama Generation Completed in {} seconds",
+        (end - start).abs().num_seconds()
+    );
 
     let data_struct: InsertableDataObject = InsertableDataObject { 
         title: llm_fields.title, 
@@ -677,4 +639,3 @@ pub async fn confirm_conversion(
     let rendered = data.tmpl.render("conversion_request/conversion_response.html", &ctx).unwrap();
     HttpResponse::Ok().body(rendered)
 }
-

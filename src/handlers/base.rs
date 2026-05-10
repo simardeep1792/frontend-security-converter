@@ -33,12 +33,20 @@ pub async fn index(
 
     println!("Context: {:?}", &ctx);
 
-    let r = all_authorities(bearer, &data.api_url, Arc::clone(&data.client))
-        .await
-        .expect("Unable to get authorities");
-
-    ctx.insert("authorities", &r.authorities);
-     
+    // When the user isn't logged in yet, we don't have a bearer token.
+    // Render the page without authorities instead of panicking.
+    if bearer.is_empty() {
+        ctx.insert("authorities", &Vec::<serde_json::Value>::new());
+    } else {
+        match all_authorities(bearer, &data.api_url, Arc::clone(&data.client)).await {
+            Ok(r) => ctx.insert("authorities", &r.authorities),
+            Err(e) => {
+                println!("Unable to get authorities: {:?}", e);
+                ctx.insert("authorities", &Vec::<serde_json::Value>::new());
+            }
+        };
+    }
+      
     let rendered = data.tmpl.render("index.html", &ctx).unwrap();
     HttpResponse::Ok().body(rendered)
 }

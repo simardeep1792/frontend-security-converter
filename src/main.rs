@@ -1,5 +1,6 @@
 use actix_web::web;
 use actix_web::{HttpServer, App, middleware};
+use actix_files::Files;
 use dotenv::dotenv;
 use std::env;
 use tera::{Tera};
@@ -7,19 +8,14 @@ use tera_text_filters::snake_case;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::cookie::Key;
-use actix_web_static_files::ResourceFiles;
 use reqwest::Client;
 use std::sync::Arc;
-use ollama_rs::Ollama;
 
 use frontend::handlers;
 use frontend::AppData;
 
 use fluent_templates::{FluentLoader, static_loader};
 // https://lib.rs/crates/fluent-templates
-
-// Setup for serving static files
-include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
 static_loader! {
     static LOCALES = {
@@ -77,27 +73,17 @@ async fn main() -> std::io::Result<()> {
     // Create Reqwest Client
     let client = Arc::new(Client::new());
     
-    // Create Ollama connection for local LLM
-    let ollama_host = env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://ollama-service.security-converter.svc.cluster.local".to_string());
-    let ollama_port = env::var("OLLAMA_PORT").unwrap_or_else(|_| "8000".to_string()).parse::<u16>().unwrap_or(8000);
-    let ollama = Ollama::new(ollama_host, ollama_port);
-
     // Initialize AppData
     let data = web::Data::new(AppData {
         tmpl: tera,
         api_url: api_url,
         client: client,
-        llm: ollama,
     });
 
     HttpServer::new(move || {
-        let generated = generate();
-
         App::new()
             .wrap(middleware::Logger::default())
-            .service(ResourceFiles::new(
-                "/static", generated,
-            ))
+            .service(Files::new("/static", "./static"))
             .configure(handlers::configure_services)
             .app_data(data.clone())
             .wrap(IdentityMiddleware::default())

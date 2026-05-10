@@ -8,7 +8,6 @@ namespace: security-converter
 resources:
   - namespace.yaml
   - postgres.yaml
-  - ollama.yaml
   - backend.yaml
   - frontend.yaml
   - ingress.yaml
@@ -25,7 +24,7 @@ images:
   - name: simardeep1792/security-converter
     newTag: eec997e-amd64
   - name: simardeep1792/security-converter-frontend
-    newTag: latest
+    newTag: ollama-vm-v6
 
 # Resource scaling configurations
 replicas:
@@ -34,6 +33,4 @@ replicas:
   - name: security-converter-frontend
     count: 2
   - name: postgres
-    count: 1
-  - name: ollama-gemma
     count: 1

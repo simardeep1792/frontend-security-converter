@@ -39,6 +39,7 @@ spec:
         prometheus.io/scrape: "false"  # Add when metrics are implemented
         prometheus.io/port: "8088"
     spec:
+      serviceAccountName: security-converter-frontend
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -87,11 +88,21 @@ spec:
             # Backend API connection - internal cluster service
             - name: GRAPHQL_API_TARGET
               value: "http://security-converter-api.security-converter.svc.cluster.local/graphql"
-            # Ollama LLM service connection
+            # Ollama VM configuration (direct private VM IP)
             - name: OLLAMA_HOST
-              value: "http://ollama-service.security-converter.svc.cluster.local"
+              value: "http://10.0.0.14"
             - name: OLLAMA_PORT
-              value: "8000"
+              value: "11434"
+            - name: OLLAMA_MODEL
+              value: "qwen2.5:14b"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "1h"
+            - name: OLLAMA_TEMPERATURE
+              value: "0.1"
+            - name: OLLAMA_TOP_P
+              value: "0.9"
+            - name: OLLAMA_NUM_PREDICT
+              value: "180"
             # Secrets
             - name: COOKIE_SECRET_KEY
               valueFrom:

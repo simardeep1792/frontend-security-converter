@@ -23,7 +23,7 @@ pub async fn get_authority_by_id(id: UUID, bearer: String, api_url: &str, client
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;
@@ -60,7 +60,7 @@ pub async fn all_authorities(bearer: String, api_url: &str, client: Arc<Client>)
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;

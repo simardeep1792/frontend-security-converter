@@ -23,7 +23,7 @@ pub async fn get_metadata_by_tag(tag: String, bearer: String, api_url: &str, cli
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;
@@ -60,7 +60,7 @@ pub async fn search_metadata_by_tag(pattern: String, bearer: String, api_url: &s
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;
@@ -97,7 +97,7 @@ pub async fn get_metadata_by_domain(domain: String, bearer: String, api_url: &st
 
     let res = client
         .post(api_url)
-        .header("Bearer", bearer)
+        .header("Authorization", format!("Bearer {}", bearer))
         .json(&request_body)
         .send()
         .await?;
