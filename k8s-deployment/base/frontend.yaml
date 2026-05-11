@@ -94,7 +94,7 @@ spec:
             - name: OLLAMA_PORT
               value: "11434"
             - name: OLLAMA_MODEL
-              value: "qwen2.5:14b"
+              value: "qwen3.5:9b"
             - name: OLLAMA_KEEP_ALIVE
               value: "1h"
             - name: OLLAMA_TEMPERATURE
@@ -102,7 +102,7 @@ spec:
             - name: OLLAMA_TOP_P
               value: "0.9"
             - name: OLLAMA_NUM_PREDICT
-              value: "180"
+              value: "256"
             # Secrets
             - name: COOKIE_SECRET_KEY
               valueFrom:

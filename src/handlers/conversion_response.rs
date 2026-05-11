@@ -13,6 +13,36 @@ use uuid::Uuid;
 use crate::{AppData, generate_basic_context, graphql::{get_authority_by_id, submit_conversion_request}};
 use crate::llm::ollama::extract_metadata_with_ollama;
 
+fn fallback_llm_fields(
+    content: &str,
+    selected_countries: &[String],
+    selected_organizations: &[String],
+    selected_handling_restrictions: &[String],
+) -> LLMFields {
+    let cleaned = content.lines().find(|l| !l.trim().is_empty()).unwrap_or("Document").trim();
+    let short_title = cleaned.chars().take(80).collect::<String>();
+    let description = format!(
+        "Auto-generated metadata fallback for POC reliability. Document begins with: {}",
+        cleaned.chars().take(120).collect::<String>()
+    );
+    let ts = chrono::Utc::now().format("%Y%m%d").to_string();
+    LLMFields {
+        title: short_title,
+        description,
+        domain: Domain::OPERATIONS,
+        tags: vec![Some("AUTO".to_string()), Some("POC".to_string()), Some("FALLBACK".to_string())],
+        identifier: format!("ORG-OPERATIONS-{}-0001", ts),
+        authorization_reference: None,
+        releasable_to_countries: Some(selected_countries.iter().map(|c| Some(c.clone())).collect()),
+        releasable_to_organizations: Some(selected_organizations.iter().map(|o| Some(o.clone())).collect()),
+        releasable_to_categories: Some(Vec::new()),
+        disclosure_category: Some("Category C".to_string()),
+        handling_restrictions: Some(selected_handling_restrictions.iter().map(|h| Some(h.clone())).collect()),
+        handling_authority: Some("NATO Security Policy".to_string()),
+        no_handling_restrictions: Some(false),
+    }
+}
+
 #[derive(Deserialize, Debug, Serialize)]
 pub struct DocumentSubmissionForm {
 
@@ -331,11 +361,21 @@ pub async fn submit_document(
         &releasable_orgs,
         &handling_restrictions,
     )
-        .await
-        .expect("Unable to retrieve Ollama generated content");
+    .await;
 
-    let llm_fields: LLMFields = serde_json::from_str(&llm_response)
-        .expect("Unable to parse LLMFields from Ollama response");
+    let llm_fields: LLMFields = match llm_response {
+        Ok(text) => match serde_json::from_str(&text) {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                println!("Unable to parse LLMFields from Ollama response: {:?}", e);
+                fallback_llm_fields(&form.content, &target_nations, &releasable_orgs, &handling_restrictions)
+            }
+        },
+        Err(e) => {
+            println!("Unable to retrieve Ollama generated content: {:?}", e);
+            fallback_llm_fields(&form.content, &target_nations, &releasable_orgs, &handling_restrictions)
+        }
+    };
 
     let end = chrono::Utc::now();
     println!(
@@ -356,6 +396,10 @@ pub async fn submit_document(
 
     let today = chrono::Utc::now().naive_utc();
 
+    let releasable_to_countries = Some(target_nations.iter().map(|c| Some(c.clone())).collect());
+    let releasable_to_organizations = Some(releasable_orgs.iter().map(|o| Some(o.clone())).collect());
+    let handling_restrictions_selected = Some(handling_restrictions.iter().map(|h| Some(h.clone())).collect());
+
     let meta_struct: InsertableMetadata = InsertableMetadata { 
         identifier: llm_fields.identifier, 
         authorization_reference: llm_fields.authorization_reference, 
@@ -365,13 +409,13 @@ pub async fn submit_document(
         format: "Markdown".to_string(), 
         format_size: Some(form.content.len() as i64), 
         security_classification: security_classification, 
-        releasable_to_countries: llm_fields.releasable_to_countries, 
-        releasable_to_organizations: llm_fields.releasable_to_organizations, 
+        releasable_to_countries, 
+        releasable_to_organizations, 
         releasable_to_categories: llm_fields.releasable_to_categories, 
-        disclosure_category: llm_fields.disclosure_category, 
-        handling_restrictions: llm_fields.handling_restrictions, 
-        handling_authority: llm_fields.handling_authority, 
-        no_handling_restrictions: llm_fields.no_handling_restrictions, 
+        disclosure_category: Some(form.disclosure_category.clone()), 
+        handling_restrictions: handling_restrictions_selected, 
+        handling_authority: Some(form.handling_authority.clone()), 
+        no_handling_restrictions: Some(handling_restrictions.is_empty()), 
         domain: llm_fields.domain, 
         tags: llm_fields.tags,
     };
