@@ -69,9 +69,7 @@ pub async fn extract_metadata_with_ollama(
 
     let prompt = format!(
         "Return ONLY one minified JSON object with these keys exactly: \
-        title,description,domain,tags,identifier,authorization_reference,\
-        releasable_to_countries,releasable_to_organizations,releasable_to_categories,\
-        disclosure_category,handling_restrictions,handling_authority,no_handling_restrictions.\n\
+        title,description,domain,tags,identifier,authorization_reference,releasable_to_categories.\n\
         Constraints: domain in [INTEL,CYBER,OPERATIONS,LOGISTICS,COMMUNICATIONS,NUCLEAR,COUNTERTERRORISM,MARITIME,AEROSPACE,SPECIALOPS]. \
         tags must be 3-6 short uppercase strings. \
         identifier format ORG-DOMAIN-DATE-XXXX. \
@@ -80,7 +78,7 @@ pub async fn extract_metadata_with_ollama(
         selected_countries={}\n\
         selected_organizations={}\n\
         selected_handling_restrictions={}\n\
-        Use only values from selected lists for corresponding fields.\n\
+        These lists are operator-selected controls handled by the web form; do not invent alternatives.\n\
         Document:\n{}",
         countries_hint,
         organizations_hint,
@@ -100,20 +98,12 @@ pub async fn extract_metadata_with_ollama(
                 "tags": {"type": "array", "items": {"type": "string"}},
                 "identifier": {"type": "string"},
                 "authorization_reference": {"type": ["string", "null"]},
-                "releasable_to_countries": {"type": "array", "items": {"type": ["string", "null"]}},
-                "releasable_to_organizations": {"type": "array", "items": {"type": ["string", "null"]}},
                 "releasable_to_categories": {"type": "array", "items": {"type": ["string", "null"]}},
-                "disclosure_category": {"type": ["string", "null"]},
-                "handling_restrictions": {"type": "array", "items": {"type": ["string", "null"]}},
-                "handling_authority": {"type": ["string", "null"]},
-                "no_handling_restrictions": {"type": ["boolean", "null"]}
+                "disclosure_category": {"type": ["string", "null"]}
             },
             "required": [
                 "title","description","domain","tags","identifier",
-                "authorization_reference","releasable_to_countries",
-                "releasable_to_organizations","releasable_to_categories",
-                "disclosure_category","handling_restrictions",
-                "handling_authority","no_handling_restrictions"
+                "authorization_reference","releasable_to_categories"
             ],
             "additionalProperties": false
         }),

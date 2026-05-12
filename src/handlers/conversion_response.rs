@@ -15,9 +15,6 @@ use crate::llm::ollama::extract_metadata_with_ollama;
 
 fn fallback_llm_fields(
     content: &str,
-    selected_countries: &[String],
-    selected_organizations: &[String],
-    selected_handling_restrictions: &[String],
 ) -> LLMFields {
     let cleaned = content.lines().find(|l| !l.trim().is_empty()).unwrap_or("Document").trim();
     let short_title = cleaned.chars().take(80).collect::<String>();
@@ -33,13 +30,7 @@ fn fallback_llm_fields(
         tags: vec![Some("AUTO".to_string()), Some("POC".to_string()), Some("FALLBACK".to_string())],
         identifier: format!("ORG-OPERATIONS-{}-0001", ts),
         authorization_reference: None,
-        releasable_to_countries: Some(selected_countries.iter().map(|c| Some(c.clone())).collect()),
-        releasable_to_organizations: Some(selected_organizations.iter().map(|o| Some(o.clone())).collect()),
         releasable_to_categories: Some(Vec::new()),
-        disclosure_category: Some("Category C".to_string()),
-        handling_restrictions: Some(selected_handling_restrictions.iter().map(|h| Some(h.clone())).collect()),
-        handling_authority: Some("NATO Security Policy".to_string()),
-        no_handling_restrictions: Some(false),
     }
 }
 
@@ -161,16 +152,8 @@ pub struct LLMFields {
     // References the authority document under which release is permitted.
     pub authorization_reference: Option<String>,
 
-    // Release restrictions
-    pub releasable_to_countries: Option<Vec<Option<String>>>,
-    pub releasable_to_organizations: Option<Vec<Option<String>>>,
+    // Optional model-proposed categories only
     pub releasable_to_categories: Option<Vec<Option<String>>>,
-    pub disclosure_category: Option<String>,
-
-    // Handling Restrictions
-    pub handling_restrictions: Option<Vec<Option<String>>>,
-    pub handling_authority: Option<String>,
-    pub no_handling_restrictions: Option<bool>,
 }
 
 /// A light struct to accept the JSON formatted Metadata included with
@@ -368,12 +351,12 @@ pub async fn submit_document(
             Ok(parsed) => parsed,
             Err(e) => {
                 println!("Unable to parse LLMFields from Ollama response: {:?}", e);
-                fallback_llm_fields(&form.content, &target_nations, &releasable_orgs, &handling_restrictions)
+                fallback_llm_fields(&form.content)
             }
         },
         Err(e) => {
             println!("Unable to retrieve Ollama generated content: {:?}", e);
-            fallback_llm_fields(&form.content, &target_nations, &releasable_orgs, &handling_restrictions)
+            fallback_llm_fields(&form.content)
         }
     };
 
