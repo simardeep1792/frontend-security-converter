@@ -30,9 +30,13 @@ pub async fn conversion_request_form(
         None => "".to_string(),
     };
 
-    let r = get_authority_by_id(authority_id, bearer, &data.api_url, Arc::clone(&data.client))
-        .await
-        .expect("Unable to get authority");
+    let r = match get_authority_by_id(authority_id, bearer, &data.api_url, Arc::clone(&data.client)).await {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Unable to get authority: {:?}", e);
+            return HttpResponse::InternalServerError().body("Unable to load conversion request form");
+        }
+    };
 
     ctx.insert("authority", &r.authority_by_id);
 
@@ -77,4 +81,3 @@ pub async fn view_conversion_request(
     let rendered = data.tmpl.render("conversion_request/view_request.html", &ctx).unwrap();
     HttpResponse::Ok().content_type("text/html; charset=utf-8").body(rendered)
 }
-

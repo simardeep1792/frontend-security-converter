@@ -6,7 +6,7 @@ use actix_identity::{Identity};
 
 
 use crate::{AppData, generate_basic_context};
-use crate::graphql::{get_authority_by_id};
+use crate::graphql::{get_authority_by_id, get_authority_by_id_with_requests};
 
 #[get("/{lang}/authority/{authority_id}")]
 pub async fn authority_by_id(
@@ -26,13 +26,21 @@ pub async fn authority_by_id(
         None => "".to_string(),
     };
 
-    let r = get_authority_by_id(authority_id, bearer, &data.api_url, Arc::clone(&data.client))
-        .await
-        .expect("Unable to get authority");
-
-    ctx.insert("authority", &r.authority_by_id);
+    match get_authority_by_id_with_requests(authority_id.clone(), bearer.clone(), &data.api_url, Arc::clone(&data.client)).await {
+        Ok(v) => ctx.insert("authority", &v.authority_by_id),
+        Err(e) => {
+            println!("Authority detailed query failed, falling back: {:?}", e);
+            let basic = match get_authority_by_id(authority_id, bearer, &data.api_url, Arc::clone(&data.client)).await {
+                Ok(b) => b,
+                Err(inner) => {
+                    println!("Unable to get authority: {:?}", inner);
+                    return HttpResponse::InternalServerError().body("Unable to load authority");
+                }
+            };
+            ctx.insert("authority", &basic.authority_by_id);
+        }
+    }
 
     let rendered = data.tmpl.render("authority/authority.html", &ctx).unwrap();
     HttpResponse::Ok().body(rendered)
 }
-
