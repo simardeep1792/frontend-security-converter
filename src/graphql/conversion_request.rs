@@ -9,6 +9,7 @@ use serde_json::Value as JSON;
 
 use crate::graphql::conversion_request;
 use crate::graphql::submit_conversion::{ConversionRequestInput, DataObjectInput, MetadataInput};
+use crate::graphql::with_optional_bearer;
 
 use crate::handlers::conversion_response::InsertableConversionRequest;
 
@@ -43,9 +44,7 @@ pub async fn submit_conversion_request(conversion_request: InsertableConversionR
         input,
     });
 
-    let res = client
-        .post(api_url)
-            .header("Authorization", format!("Bearer {}", bearer))
+    let res = with_optional_bearer(client.post(api_url), &bearer)
         .json(&request_body)
         .send()
         .await?;
@@ -83,9 +82,7 @@ pub async fn get_conversion_request_by_id(id: String, bearer: String, api_url: &
         id,
     });
 
-    let res = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", bearer))
+    let res = with_optional_bearer(client.post(api_url), &bearer)
         .json(&request_body)
         .send()
         .await?;

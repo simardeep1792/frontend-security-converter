@@ -24,7 +24,7 @@ images:
   - name: simardeep1792/security-converter
     newTag: eec997e-amd64
   - name: simardeep1792/security-converter-frontend
-    newTag: ollama-vm-v10
+    newTag: ollama-think-false-20260520
 
 # Resource scaling configurations
 replicas:

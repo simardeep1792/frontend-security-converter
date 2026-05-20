@@ -5,6 +5,8 @@ use reqwest::Client;
 use std::sync::Arc;
 use chrono::NaiveDateTime;
 
+use crate::graphql::with_optional_bearer;
+
 type UUID = String;
 
 #[derive(GraphQLQuery, Serialize, Deserialize)]
@@ -29,9 +31,7 @@ pub async fn get_authority_by_id(id: UUID, bearer: String, api_url: &str, client
         id,
     });
 
-    let res = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", bearer))
+    let res = with_optional_bearer(client.post(api_url), &bearer)
         .json(&request_body)
         .send()
         .await?;
@@ -60,9 +60,7 @@ pub async fn get_authority_by_id_with_requests(id: UUID, bearer: String, api_url
         id: id.clone(),
     });
 
-    let res = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", bearer.clone()))
+    let res = with_optional_bearer(client.post(api_url), &bearer)
         .json(&request_body)
         .send()
         .await?;
@@ -97,9 +95,7 @@ pub async fn all_authorities(bearer: String, api_url: &str, client: Arc<Client>)
     let request_body = AllAuthorities::build_query(all_authorities::Variables {
     });
 
-    let res = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", bearer))
+    let res = with_optional_bearer(client.post(api_url), &bearer)
         .json(&request_body)
         .send()
         .await?;

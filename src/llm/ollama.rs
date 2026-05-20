@@ -9,6 +9,7 @@ struct OllamaGenerateRequest {
     prompt: String,
     format: serde_json::Value,
     stream: bool,
+    think: bool,
     keep_alive: String,
     options: OllamaOptions,
 }
@@ -108,6 +109,7 @@ pub async fn extract_metadata_with_ollama(
             "additionalProperties": false
         }),
         stream: false,
+        think: false,
         keep_alive,
         options: OllamaOptions {
             temperature,
